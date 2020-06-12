@@ -6,19 +6,36 @@ from matplotlib import cm
 
 def mse(datax,datay,w):
     """ retourne la moyenne de l'erreur aux moindres carres """
-    pass
+
+    datax, datay = datax.reshape(len(datay),-1), datay.reshape(-1,1)
+
+    return np.square(np.subtract(datay,datax * w)).mean()
 
 def mse_g(datax,datay,w):
+
     """ retourne le gradient moyen de l'erreur au moindres carres """
-    pass
+
+    datax, datay = datax.reshape(len(datay),-1),datay.reshape(-1,1)
+    minustwos = -2 * np.ones(len(datay))
+
+    M = datay - np.dot(datax, w.T)
+    
+    #return (-2/np.shape(datax)[0]) * np.sum(np.dot(datax.T, M))
+    return np.dot(minustwos,np.subtract(datay,datax * w.T)).mean()
 
 def hinge(datax,datay,w):
-    """ retourn la moyenne de l'erreur hinge """
-    pass
+    """ retourne la moyenne de l'erreur hinge """
+    if len(datax.shape)==1: datax = datax.reshape(1,-1)
+    #datax, datay = datax.reshape(len(datay), -1), datay.reshape(-1, 1)
+    return np.mean(np.maximum(0, -datay*np.dot(datax, w)))
+    #return np.maximum(0, -datay * datax.dot(w)).mean()
 
 def hinge_g(datax,datay,w):
     """ retourne le gradient moyen de l'erreur hinge """
-    pass
+    datax, datay, w = datax.reshape(len(datay),-1), datay.reshape(-1,1), w.reshape(-1,1)
+
+    return np.maximum(np.zeros(len(datay)),np.ones(len(datay))-(datay * (datax.dot(w)))).mean()
+
 
 class Lineaire(object):
     def __init__(self,loss=hinge,loss_g=hinge_g,max_iter=1000,eps=0.01):
@@ -47,10 +64,11 @@ class Lineaire(object):
     def predict(self,datax):
         if len(datax.shape)==1:
             datax = datax.reshape(1,-1)
-        pass
+        return np.sign(np.dot(datax, self.w.T)).reshape(-1)
 
     def score(self,datax,datay):
-        pass
+        """retourne le score moyen par prédiction"""
+        return np.mean(self.predict(datax) != datay)
 
 
 
@@ -89,5 +107,3 @@ if __name__=="__main__":
     plt.figure()
     plot_frontiere(trainx,perceptron.predict,200)
     plot_data(trainx,trainy)
-
- 
