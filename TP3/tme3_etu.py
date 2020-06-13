@@ -19,7 +19,7 @@ def mse_g(datax,datay,w):
     minustwos = -2 * np.ones(len(datay))
 
     M = datay - np.dot(datax, w.T)
-    
+
     #return (-2/np.shape(datax)[0]) * np.sum(np.dot(datax.T, M))
     return np.dot(minustwos,np.subtract(datay,datax * w.T)).mean()
 
