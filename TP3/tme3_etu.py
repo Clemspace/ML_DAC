@@ -16,16 +16,19 @@ def mse_g(datax,datay,w):
     """ retourne le gradient moyen de l'erreur au moindres carres """
 
     datax, datay = datax.reshape(len(datay),-1),datay.reshape(-1,1)
-    minustwos = -2 * np.ones(len(datay))
+    w = w.reshape(-1, 1)
+    #minustwos = -2 * np.ones(len(datay))
+    M = datay - np.dot(datax, w)
 
-    M = datay - np.dot(datax, w.T)
+    return (-2/np.shape(datax)[0]) * np.sum(np.dot(datax.T, M))
+    #return np.dot(-2,np.subtract(datay,datax.dot(w))).mean()
 
-    #return (-2/np.shape(datax)[0]) * np.sum(np.dot(datax.T, M))
-    return np.dot(minustwos,np.subtract(datay,datax * w.T)).mean()
+
 
 def hinge(datax,datay,w):
     """ retourne la moyenne de l'erreur hinge """
     if len(datax.shape)==1: datax = datax.reshape(1,-1)
+    w = w.reshape(-1, 1)
     #datax, datay = datax.reshape(len(datay), -1), datay.reshape(-1, 1)
     return np.mean(np.maximum(0, -datay*np.dot(datax, w)))
     #return np.maximum(0, -datay * datax.dot(w)).mean()
@@ -38,7 +41,7 @@ def hinge_g(datax,datay,w):
 
 
 class Lineaire(object):
-    def __init__(self,loss=hinge,loss_g=hinge_g,max_iter=1000,eps=0.01):
+    def __init__(self,loss=hinge,loss_g=hinge_g,max_iter=1000,eps=0.01,hist=False, bias=False):
         """ :loss: fonction de cout
             :loss_g: gradient de la fonction de cout
             :max_iter: nombre d'iterations
@@ -46,29 +49,72 @@ class Lineaire(object):
         """
         self.max_iter, self.eps = max_iter,eps
         self.loss, self.loss_g = loss, loss_g
+        self.hist = hist
+        self.bias = bias
 
-    def fit(self,datax,datay,testx=None,testy=None):
+    def fit(self,data_x,data_y,testx=None,testy=None, batch=None):
         """ :datax: donnees de train
             :datay: label de train
             :testx: donnees de test
             :testy: label de test
         """
         # on transforme datay en vecteur colonne
-        datay = datay.reshape(-1,1)
+        datay = data_y.reshape(-1,1)
         N = len(datay)
-        datax = datax.reshape(N,-1)
+        datax = data_x.reshape(N,-1)
         D = datax.shape[1]
-        self.w = np.random.random((1,D))
-        pass
+        if self.bias:
+            self.w = np.random.random((1,D+1))
+        else:
+            self.w = np.random.random((1,D))
+
+
+
+        if self.hist:
+            self.w_hist = np.empty((self.max_iter, D))
+
+        if testx is not None:
+            erreurs = np.empty((self.max_iter, 2))
+
+        for i in range(self.max_iter):
+
+            if batch is not None:
+                list_batch = np.random.choice(N, batch, False)
+                grad = self.loss_g(datax[list_batch, :], datay[list_batch, :], self.w)
+            else:
+                grad = self.loss_g(datax, datay, self.w)
+
+            self.w = self.w - self.eps * grad
+
+            if self.hist:
+                self.w_hist[i, :] = self.w[:, 0]
+
+            if testx is not None:
+                erreurs[i, 0] = self.score(datax, datay)
+                erreurs[i, 1] = self.score(testx, testy)
+
+        if testx is not None:
+            return erreurs
+
 
     def predict(self,datax):
-        if len(datax.shape)==1:
+        if len(datax.shape) == 1:
             datax = datax.reshape(1,-1)
-        return np.sign(np.dot(datax, self.w.T)).reshape(-1)
+        if self.bias:
+            datax = np.hstack(datax, np.ones((datax.shape[0], 1)))
+        return np.sign(datax.dot(self.w.T))
+
 
     def score(self,datax,datay):
         """retourne le score moyen par prédiction"""
-        return np.mean(self.predict(datax) != datay)
+        if self.bias:
+            datax = np.hstack((datax, np.ones((datax.shape[0], 1))))
+        return np.mean(self.predict(datax) == np.sign(datay))
+
+
+    def accuracy(self, datax, datay):
+        datax, datay = datax.reshape(len(datay), -1), datay.reshape(-1, 1)
+        return ((self.predict(datax) * datay) >= 0).mean()
 
 
 
@@ -81,6 +127,7 @@ def load_usps(fn):
 
 def show_usps(data):
     plt.imshow(data.reshape((16,16)),interpolation="nearest",cmap="gray")
+    plt.colorbar()
 
 
 
