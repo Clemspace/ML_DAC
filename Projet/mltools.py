@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as clr
+from sklearn.linear_model import Lasso
 
 def load_usps(fn):
     with open(fn,"r") as f:
@@ -64,21 +65,37 @@ def init_USPS_1vAll(isolated_value):
 def read_im(fn):
 
     #with open(fn,"r") as f:
-    im = plt.imread("fn")[:,:,:3]
-    im_h, im_l, _ = im.shape
-    # Transform into array of pixels (3 dim)
-    pixels = im.reshape((im_h * im_l, 3)) # in RGB
-    pixels_hsv = clr.rgb_to_hsv(pixels) # convert to HSV
+    img = plt.imread(fn)[:,:,:3]
 
+    if np.issubdtype(img.dtype, np.integer):
+        info = np.iinfo(img.dtype)
+        img = img/info.max
+
+    im_h, im_l, _ = img.shape
+
+    # Transform into array of pixels (3 dim)
+    pixels = img.reshape((im_h , im_l, 3)) # in RGB
+    img = 2*img - 1
+
+    pixels_hsv = clr.rgb_to_hsv(pixels) # convert to HSV
+    pixels_hsv= 2*pixels_hsv - 1
     return pixels_hsv
 
-def display_im(img):
 
-    im_h, im_l, _ = im.shape
-    im = img.reshape((im_h, im_l, 3))
+def display_im(img):
+    """
+    displays given image at format RGB
+    """
+    plt.figure()
+
+
+    img = (img + 1)/2
+
+
     im = clr.hsv_to_rgb(img)
-    plt.imgshow(im)
-    return im
+
+    plt.imshow(im)
+
 
 def get_patch(i, j, h, img):
     """
@@ -96,3 +113,20 @@ def delete_rect(img, i, j, height, width):
     i0 = i - (height//2)
     j0 = j - (width//2)
     img[i0:(i0+height), j0:(j0+width), :] = -100
+
+def patch_to_vect(patch):
+
+    return patch.reshape(-1)
+
+def vect_to_patch(vect):
+
+    h = int(np.sqrt(vect.size//3))
+
+    return vect.reshape(h, h, 3)
+
+def add_noise(img, prc):
+    imgcopy = img.copy()
+    noise = np.random.random(imgcopy.shape[:2]) <= prc
+    for i in range(imgcopy.shape[2]):
+        imgcopy[:, :, i] = np.where(noise, -100, imgcopy[:, :, i])
+    return imgcopy
